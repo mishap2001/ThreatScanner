@@ -65,6 +65,8 @@ read -p "[*] Enter your urlscan.io API Key: " URLSCAN_API
 read -p "[*] Enter your ThreatYeti API Key: " TY_API
 read -p "[*] Enter your IPInfo API Key: " IPINFO_API
 read -p "[*] Enter your AbuseIPDB API Key: " ABUSEIPDB_API
+read -p "[*] Enter your Telegram Bot Token: " BOT_TOKEN
+read -p "[*] Enter your Telegram Chat ID: " CHAT_ID
 echo "VT_API=\"$VT_API\"" > .ThreatScore.conf
 echo "MB_API=\"$MB_API\"" >> .ThreatScore.conf
 echo "OTX_API=\"$OTX_API\"" >> .ThreatScore.conf
@@ -728,10 +730,31 @@ echo -e "${BOLD}Score:${ENDCOLOR} ${MAGENTA}${BOLD}$score / 100${ENDCOLOR}"
 echo -e "${BOLD}Verdict:${ENDCOLOR} $verdict"
 }
 
+function MSG()
+{
+case "$scan_choice" in
+	1) type="$ip_type"; obj="$ip" ;;
+	2) type="Domain"; obj="$url" ;;
+	3) type="URL"; obj="$url" ;;
+	4) type="Hash"; obj="$hash" ;;
+esac
+
+msg="=============================
+ThreatScanner Analysis Resuls
+=============================
+Type: $type
+Scanned Object: $obj
+Score: $score
+Verdict: $verdict"
+
+curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" -d "chat_id=${CHAT_ID}" --data-urlencode "text=${msg}" >/dev/null
+}
+
+
 APPS
 CONF
 MENU
-
+MSG
 
 
 
