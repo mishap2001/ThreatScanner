@@ -7,6 +7,7 @@
 # LinkedIn: https://www.linkedin.com/in/michael-pritsert-8168bb38a
 # License: MIT License
 ###############################################################
+
 RED='\e[31m'
 GREEN='\e[32m'
 YELLOW='\e[33m'
@@ -67,7 +68,9 @@ read -p "[*] Enter your IPInfo API Key: " IPINFO_API
 read -p "[*] Enter your AbuseIPDB API Key: " ABUSEIPDB_API
 read -p "[*] Enter your Telegram Bot Token: " BOT_TOKEN
 read -p "[*] Enter your Telegram Chat ID: " CHAT_ID
-echo "VT_API=\"$VT_API\"" > .ThreatScore.conf
+echo "BOT_TOKEN=$BOT_TOKEN" > .ThreatScore.conf
+echo "CHAT_ID=$CHAT_ID" >> .ThreatScore.conf
+echo "VT_API=\"$VT_API\"" >> .ThreatScore.conf
 echo "MB_API=\"$MB_API\"" >> .ThreatScore.conf
 echo "OTX_API=\"$OTX_API\"" >> .ThreatScore.conf
 echo "CF_ACCOUNT_ID=\"$CF_ACCOUNT_ID\"" >> .ThreatScore.conf
@@ -257,6 +260,7 @@ echo -e "${BOLD}Recent pulse names:${ENDCOLOR}"
 [ -n "$RECENT_PULSES" ] && echo "$RECENT_PULSES" || echo "None"
 
 SCORE "IP"
+MSG
 }
 
 function DOMAIN()
@@ -363,6 +367,7 @@ echo -e "${BOLD}References:${ENDCOLOR}"
 [ -n "$REFS" ] && echo "$REFS"
 
 SCORE "DOMAIN"
+MSG
 }
 
 function URL()
@@ -496,6 +501,7 @@ abuse_score=${abuse_score:-0}
 PULSES=${PULSES:-0}
 
 SCORE "URL"
+MSG
 }
 
 function HASH()
@@ -645,6 +651,7 @@ echo -e "${BOLD}Created:${ENDCOLOR} $pulse_created"
 echo -e "${BOLD}Modified:${ENDCOLOR} $pulse_modified"
 
 SCORE "HASH"
+MSG
 }
 
 function SCORE()
@@ -733,28 +740,59 @@ echo -e "${BOLD}Verdict:${ENDCOLOR} $verdict"
 function MSG()
 {
 case "$scan_choice" in
-	1) type="$ip_type"; obj="$ip" ;;
-	2) type="Domain"; obj="$url" ;;
-	3) type="URL"; obj="$url" ;;
-	4) type="Hash"; obj="$hash" ;;
+    1) type="$ip_type"; obj="$ip" ;;
+    2) type="Domain"; obj="$domain" ;;
+    3) type="URL"; obj="$url" ;;
+    4) type="Hash"; obj="$hash" ;;
 esac
 
-msg="=============================
-ThreatScanner Analysis Resuls
-=============================
+plain_verdict=$(echo "$verdict" | sed -E 's/\\e\[[0-9;]*m//g; s/\x1b\[[0-9;]*m//g')
+
+if ((score >= 75)); then
+    emoji="🔴"
+elif ((score >= 45)); then
+    emoji="🟠"
+elif ((score >= 20)); then
+    emoji="🟡"
+else
+    emoji="🟢"
+fi
+
+if ((score >= 75)); then
+    risk="HIGH"
+elif ((score >= 45)); then
+    risk="MEDIUM"
+elif ((score >= 20)); then
+    risk="LOW"
+else
+    risk="NONE"
+fi
+
+msg="$emoji ThreatScanner Alert
+
 Type: $type
-Scanned Object: $obj
-Score: $score
-Verdict: $verdict"
+Target: $obj
 
-curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" -d "chat_id=${CHAT_ID}" --data-urlencode "text=${msg}" >/dev/null
+Score: $score / 100
+Verdict: $plain_verdict
+
+Indicators:
+VT: M=${vt_malicious:-0} S=${vt_suspicious:-0}
+AbuseIPDB: ${abuse_score:-N/A}
+OTX: ${PULSES:-0} pulses
+
+Risk: $risk
+
+Time: $(date '+%Y-%m-%d %H:%M:%S')"
+
+curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+    -d "chat_id=${CHAT_ID}" \
+    --data-urlencode "text=${msg}" >/dev/null
+
+echo
+echo "Message was sent"
 }
-
 
 APPS
 CONF
 MENU
-MSG
-
-
-
